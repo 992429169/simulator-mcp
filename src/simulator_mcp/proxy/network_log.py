@@ -28,9 +28,10 @@ class LogEntry:
     request_body_file: str | None = None
     response_body_file: str | None = None
     duration_ms: float | None = None
+    mocked: bool = False
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "id": self.id,
             "timestamp": self.timestamp,
             "method": self.method,
@@ -45,6 +46,9 @@ class LogEntry:
             "response_body_file": self.response_body_file,
             "duration_ms": self.duration_ms,
         }
+        if self.mocked:
+            d["mocked"] = True
+        return d
 
 
 class NetworkLog:
@@ -101,7 +105,8 @@ class NetworkLog:
         parsed = urlparse(entry.url)
         dur = f"{entry.duration_ms:.0f}ms" if entry.duration_ms else "?"
         status = entry.status_code or "?"
-        line = f"{time.strftime('%H:%M:%S')} {status} {entry.method:5} {dur:>8}  {parsed.netloc}{parsed.path}"
+        mock_tag = " [MOCK]" if entry.mocked else ""
+        line = f"{time.strftime('%H:%M:%S')} {status} {entry.method:5} {dur:>8}  {parsed.netloc}{parsed.path}{mock_tag}"
         summary_dir = os.path.dirname(self._summary_log_file)
         if summary_dir:
             os.makedirs(summary_dir, exist_ok=True)

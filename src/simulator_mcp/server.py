@@ -114,27 +114,14 @@ TOOLS = [
     # Network
     Tool(
         name="start_network_proxy",
-        description="Start mitmproxy for intercepting simulator traffic. Use mode=local with capture_frontmost_app=true to target the current foreground simulator app by PID without relaunching it.",
+        description="Start mitmproxy for intercepting simulator traffic. Use launch_app(proxy=true) to route app traffic through the proxy.",
         inputSchema={
             "type": "object",
             "properties": {
                 "port": {"type": "integer", "description": "Proxy port (default: 8080)"},
-                "mode": {
-                    "type": "string",
-                    "enum": ["regular", "local"],
-                    "description": "Proxy mode. regular uses launch_app(proxy=true); local uses macOS local capture.",
-                },
                 "udid": {
                     "type": "string",
-                    "description": "Device UDID. Recommended for local mode when targeting the active simulator app.",
-                },
-                "target_pid": {
-                    "type": "integer",
-                    "description": "In local mode, capture only the specified host PID.",
-                },
-                "capture_frontmost_app": {
-                    "type": "boolean",
-                    "description": "In local mode, resolve the current frontmost simulator app and capture only that PID.",
+                    "description": "Device UDID used for CA certificate installation. Optional; defaults to the booted simulator.",
                 },
             },
         },

@@ -203,7 +203,7 @@ flowchart LR
 ### 3. 网络抓包 + Mock（基于 mitmproxy + DYLD 注入）
 
 **核心文件**:
-- `proxy/proxy_server.py` — mitmproxy 生命周期 + ProxyAddon + local 模式 PID 监控
+- `proxy/proxy_server.py` — mitmproxy 生命周期 + ProxyAddon + CA 证书安装
 - `proxy/network_log.py` — 请求日志存储
 - `proxy/mock_engine.py` — Mock 规则引擎
 - `proxy-dylib/proxy_inject.m` — Objective-C 运行时注入（regular 模式）
@@ -244,67 +244,25 @@ flowchart TD
     style Log fill:#8E8E93,color:#fff
 ```
 
-**整体流程（local 模式）**:
-
-```mermaid
-flowchart TD
-    Start["start_network_proxy(mode='local',<br/>capture_frontmost_app=true)"] --> Detect["检测前台 App<br/>PID + 关联进程 PIDs"]
-    Detect --> Thread["后台守护线程<br/>DumpMaster(mode='local:PID')"]
-    Thread --> CA["安装 CA 证书"]
-    CA --> Reset["lldb shutdown() 已有外部连接<br/>→ App 自动重连经过代理"]
-    Reset --> Monitor["启动 PID 监控线程<br/>(每 3 秒检测)"]
-    Monitor --> Ready["代理就绪，持续抓包"]
-
-    Ready --> PidGone{"目标 PID 消失?<br/>(App 被重启)"}
-    PidGone -->|"否"| Ready
-    PidGone -->|"是"| Reattach["查找同 bundle_id 新 PID<br/>options.update(mode='local:新PID')<br/>reset 新进程已有连接"]
-    Reattach --> Ready
-
-    style Start fill:#34C759,color:#fff
-    style Detect fill:#007AFF,color:#fff
-    style Thread fill:#007AFF,color:#fff
-    style CA fill:#007AFF,color:#fff
-    style Reset fill:#FF9500,color:#fff
-    style Monitor fill:#5856D6,color:#fff
-    style Ready fill:#34C759,color:#fff
-    style PidGone fill:#FF9500,color:#fff
-    style Reattach fill:#E74C3C,color:#fff
-```
-
 #### 3.1 ProxyServer 生命周期
 
 ```python
 class ProxyServer:
-    def start(port=8080, mode="regular", capture_frontmost_app=False):
-        # 1. regular 模式: DumpMaster(mode=["regular"], listen_port=port)
-        #    local 模式: 检测前台 App PID → DumpMaster(mode=["local:PID"])
+    def start(port=8080, udid=None):
+        # 1. 启动后台线程运行 DumpMaster(mode=["regular"], listen_port=port)
         # 2. 创建守护线程运行 mitmproxy，等待启动完成
-        # 3. 自动安装 CA 证书到 Booted 模拟器
-        # 4. local 模式: reset 已有外部连接 + 启动 PID 监控线程
-        # 5. 返回启动信息
+        # 3. 自动安装 CA 证书到目标或 Booted 模拟器
+        # 4. 返回启动信息
 
     def _run_proxy():
         # 独立 asyncio event loop（不能与 MCP server 共用）
         # 注册 ProxyAddon + StartupSignalAddon
 
     def stop():
-        # 停止 PID 监控线程 → master.shutdown() → 线程自动结束
+        # master.shutdown() → 线程自动结束
 
     def get_launch_env():
         # 返回 DYLD_INSERT_LIBRARIES + PROXY_HOST + PROXY_PORT
-        # 仅 regular 模式可用
-
-    # --- local 模式专用 ---
-    def _reset_existing_connections(pid):
-        # lsof 查找非 localhost 的 ESTABLISHED TCP 连接
-        # lldb --batch 调用 shutdown(fd, SHUT_RDWR) 断开已有连接
-        # App 检测到断开后自动重连，新连接经过代理
-
-    def _monitor_pid():
-        # 后台线程，每 3 秒 os.kill(pid, 0) 检查存活
-        # PID 消失 → 等 2 秒 → get_frontmost_app 查找同 bundle 新 PID
-        # → master.options.update(mode=["local:新PID"]) 动态切换
-        # → reset 新进程已有连接
 ```
 
 **为什么用后台线程？** mitmproxy 需要自己的 asyncio event loop，不能与 MCP server 的 event loop 共用同一线程。守护线程（daemon=True）在主进程退出时自动清理。

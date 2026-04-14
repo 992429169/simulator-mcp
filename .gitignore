@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.DS_Store
+.coverage
+.coverage.*
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+uv.lock
+simulator-mcp.zip

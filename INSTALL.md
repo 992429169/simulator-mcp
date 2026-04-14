@@ -131,6 +131,7 @@ AI: 调用 list_devices → 返回设备列表
 3. `get_network_log(url_pattern="api/xxx")` — 查看请求
 4. `add_mock_rule(url_pattern="api/login", response_body='{"token":"fake"}')` — Mock 接口
 
+> 当前仅支持 regular 抓包流程：先 `start_network_proxy()`，再通过 `launch_app(..., proxy=true)` 启动目标 APP。
 > 抓包原理：通过 DYLD_INSERT_LIBRARIES 注入 dylib，在 APP 启动前 swizzle NSURLSessionConfiguration，将所有 HTTP(S) 流量转发到 mitmproxy。
 
 ## 重新编译 dylib（可选）

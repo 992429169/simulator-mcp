@@ -114,25 +114,17 @@ AI:  调用 add_mock_rule(url_pattern="api/login", response_body='{"token":"fake
    - 自动在后台线程启动 mitmproxy
    - 如果当前已有 booted simulator，会先尝试安装 mitmproxy CA 证书
 
-2. **regular 模式：带代理启动 APP**：`launch_app(udid="xxx", bundle_id="com.example.app", proxy=true)`
+2. **带代理启动 APP**：`launch_app(udid="xxx", bundle_id="com.example.app", proxy=true)`
    - 通过 `DYLD_INSERT_LIBRARIES` 注入 `libproxy_inject.dylib`
    - Swizzle `NSURLSessionConfiguration`，将所有 HTTP(S) 流量转发到代理
    - 会再次对目标模拟器执行 CA 证书安装，避免“先开代理、后启动模拟器”时 HTTPS 抓包失效
 
-3. **local 模式：只抓当前前台 APP，不重启**：
-   - `start_network_proxy(mode="local", udid="xxx", capture_frontmost_app=true)`
-   - 通过 mitmproxy 的 macOS local capture 只拦截当前前台 simulator app 的 host PID
-   - 不需要 `launch_app(proxy=true)`，适合已经在运行的 app
-   - 自动 reset 已有的外部 TCP 连接（通过 lldb shutdown），强制 App 重连经过代理
-   - 后台 PID 监控：App 重启后自动检测新 PID 并重新绑定，无需手动重启代理
-
-4. **查看/Mock 请求**：
+3. **查看/Mock 请求**：
    - `get_network_log(url_pattern="api/user")` — 按 URL 子串筛选
    - `add_mock_rule(url_pattern="api/login", response_body="...")` — URL 正则匹配
 
 ### 技术原理
 
-**regular 模式**:
 ```
 App 启动 → dylib 注入 → swizzle NSURLSessionConfiguration
   → 所有 NSURLSession 流量 → mitmproxy (127.0.0.1:8080)
@@ -142,18 +134,6 @@ App 启动 → dylib 注入 → swizzle NSURLSessionConfiguration
       - `/tmp/proxy_requests.log`：摘要日志
       - `/tmp/proxy_requests.jsonl`：结构化明细日志
       - `/tmp/proxy_request_bodies/`：超大 body 的分流文件
-```
-
-**local 模式**:
-```
-start_network_proxy(mode="local", capture_frontmost_app=true)
-  → 检测前台 App PID + 关联进程 PID
-  → mitmproxy local redirector 按 PID 拦截新建 TCP 连接
-  → lldb shutdown() 已有外部连接 → App 自动重连经过代理
-  → 后台 PID 监控线程（每 3 秒）：
-      App 重启 → 检测旧 PID 消失 → 查找新 PID
-      → options.update(mode=["local:新PID"]) 动态更新拦截规则
-      → reset 新进程已有连接
 ```
 
 ## 项目结构
