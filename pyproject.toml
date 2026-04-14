@@ -1,0 +1,17 @@
+[project]
+name = "simulator-mcp"
+version = "0.1.0"
+description = "MCP server for Xcode Simulator automation"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.0",
+    "mitmproxy>=10.0",
+    "fb-idb",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+simulator-mcp = "simulator_mcp:main"
